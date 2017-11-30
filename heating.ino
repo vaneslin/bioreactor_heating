@@ -13,8 +13,8 @@ void setup() {
 
 void loop() {
   // read analog input and convert to Celcius temperature
-        float tempSensor = analogRead(THERMISTOR);	
-        float temp = logf(10000.0 * (1023.0 / tempSensor - 1));
+        double tempSensor = analogRead(THERMISTOR);	
+        double temp = logf(10000.0 * (1023.0 / tempSensor - 1));
         temp = 1/(0.001129148 + (0.000234125 + (0.0000000876741 * temp * temp)) * temp);
         temp -= 273.15; //convert from K to C
         Serial.print("Temperature: ");
