@@ -1,47 +1,55 @@
-const int HEATER_PIN = P1_1;  // output pin 3 of heater element 
-const int TEMPOUT_PIN = P1_2; //output pin 4 of (int) temperature to main MSP
+// Define IO Pins
+const int HEATER_PIN = P1_4;    
+const int TEMPOUT_PIN = P1_5;    
+const int THERMISTOR_PIN = A0;  
 
-const int THERMISTOR_PIN = A0;  // input pin 2 of thermistor
-const int IDEAL = A5;  // input pin 5 to read ideal temperature from main MSP
-
-float idealTemp = 27.0;  // default ideal temp value
-const float buffer = 0.5; // range of fluctation from ideal temperature, if needed
+// Set a default ideal temperature
+float idealTemp = 26.50;  
 
 void setup() {
-  //set baudrate and declare pins
-	Serial.begin(9600);
-	pinMode(HEATER_PIN, OUTPUT);
-        //pinMode(TEMPOUT_PIN, OUTPUT);
+  /* runs once and sets baudrate, declares output pins */
+    Serial.begin(9600);
+    pinMode(HEATER_PIN, OUTPUT);
+    pinMode(TEMPOUT_PIN, OUTPUT);
 }
 
 void loop() {
-  //read ideal temperature
-        //idealTemp = analogRead(IDEAL); 
-        //OR
-        //idealTemp = int(0.126*pulseIn(IDEAL, HIGH) - 0.1246)
+  /* constantly loops the following:
+   * update value idealTemp from main MSP
+   * calculate temperature
+   * turn heater on/off
+   */
+   
+ // read ideal temperature from main MSP
+    int serial_size=Serial.available();
+    if(serial_size>0){
+      idealTemp=0;
+      if(serial_size>1){
+        serial_size=2;
+      }
+      for(int j=0;j<serial_size;j++){
+        idealTemp*=10;
+        idealTemp+=(Serial.read()-48);
+      }
+    }
         
-  // read analog ADC input and convert to Celcius temperature,  v3.0
-        int ADC = analogRead(THERMISTOR_PIN);
-        double temp = logf(((10240000/(ADC - 200.0)) - 10000));  // adjust ADC range as per calibration
-        temp = 1.0/ (0.001125161025848 + (0.000234721098632 + (0.000000085877049 * temp * temp)) * temp);
-        temp -= 273.15;
-        temp += 17.5;  // add set constant as per calibration
-        Serial.print(temp);
-        Serial.println(" oC");
+ // read analog ADC input and convert to Celcius temperature using Steinhart-Hart equation @ https://www.thermistor.com/calculators
+    int ADC = analogRead(THERMISTOR_PIN);
+    double temp = logf(((10240000/(ADC - 200.0)) - 10000));  // adjust ADC range as per calibration
+    temp = 1.0/ (0.001125161025848 + (0.000234721098632 + (0.000000085877049 * temp * temp)) * temp);
+    temp -= 273.15;
+    temp += 17.5;  // add set constant as per calibration
+    Serial.println(temp);
         
  // write temperature to main MSP
-        //int temp_int = (int) temp;  // get int representation of temperature
-        //digitalWrite(TEMPOUT_PIN, temp_int);  
+    int temp_int = (int) temp;  // get int representation of temperature
+    digitalWrite(TEMPOUT_PIN, temp_int);  
         
-// write to heater element and regulate temperature
-	if (temp > idealTemp){ 
-		Serial.println(" Hot!");
-                digitalWrite(HEATER_PIN, LOW); // turns off heater element             
-	} else if (temp < idealTemp){ 
-		Serial.println(" Cold!");
-                digitalWrite(HEATER_PIN, HIGH);  // turns on heater element
-	} else {
-		Serial.println(" Just right.");
-	}
-	delay(1000);
+ // write to heater element and regulate temperature
+    if (temp > idealTemp){ 
+              digitalWrite(HEATER_PIN, LOW);           
+    else digitalWrite(HEATER_PIN, HIGH);  
+    
+ // ~one second delay to not mess up reading/writing
+    delay(1000);
 }
